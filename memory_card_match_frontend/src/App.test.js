@@ -8,10 +8,10 @@ test("renders home screen title", () => {
   expect(title).toBeInTheDocument();
 });
 
-test("renders Play button on home screen", () => {
+test('renders "Start the Game" button on home screen', () => {
   render(<App />);
-  const play = screen.getByRole("button", { name: /start game/i });
-  expect(play).toBeInTheDocument();
+  const start = screen.getByRole("button", { name: /start the game/i });
+  expect(start).toBeInTheDocument();
 });
 
 test("renders theme toggle button with accessible label on home screen", () => {
@@ -20,12 +20,12 @@ test("renders theme toggle button with accessible label on home screen", () => {
   expect(toggle).toBeInTheDocument();
 });
 
-test("starts game when Play is activated and shows face-down cards", async () => {
+test('starts game when "Start the Game" is activated and shows face-down cards', async () => {
   const user = userEvent.setup();
   render(<App />);
 
-  const play = screen.getByRole("button", { name: /start game/i });
-  await user.click(play);
+  const start = screen.getByRole("button", { name: /start the game/i });
+  await user.click(start);
 
   // After starting, cards should be present and expose generic accessible name (no emoji leakage).
   const faceDown = await screen.findAllByRole("button", { name: /card face down, card \d+ of \d+/i });
@@ -36,7 +36,7 @@ test("renders timer stat element in game screen after starting", async () => {
   const user = userEvent.setup();
   render(<App />);
 
-  await user.click(screen.getByRole("button", { name: /start game/i }));
+  await user.click(screen.getByRole("button", { name: /start the game/i }));
 
   // Time appears as a stat label in the header; ensure it's present.
   const timeLabel = await screen.findByText(/^time$/i);

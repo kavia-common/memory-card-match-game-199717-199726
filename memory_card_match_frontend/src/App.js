@@ -26,11 +26,11 @@ function App() {
   /** Main entry component for the Memory Card Match game app (Home + Game screens). */
   const [screen, setScreen] = useState(SCREENS.home);
 
-  // Home UI state (placeholder only; not used by game yet)
-  const [difficulty, setDifficulty] = useState("normal"); // easy | normal | hard (placeholder)
+
 
   // Focus management for accessibility
   const playButtonRef = useRef(null);
+  const gameRegionRef = useRef(null);
 
   const [deck, setDeck] = useState(() =>
     createShuffledDeck({ pairCount: (GRID_SIZE * GRID_SIZE) / 2 })
@@ -115,6 +115,14 @@ function App() {
   useEffect(() => {
     if (screen === SCREENS.home && playButtonRef.current) {
       playButtonRef.current.focus();
+    }
+  }, [screen]);
+
+  // Move focus into the game region after navigation for accessibility
+  useEffect(() => {
+    if (screen === SCREENS.game && gameRegionRef.current) {
+      // Focus the region wrapper so screen reader + keyboard users land in the game.
+      gameRegionRef.current.focus();
     }
   }, [screen]);
 
@@ -391,9 +399,9 @@ function App() {
 
               <section className="mc-home" aria-label="Home screen">
                 <div className="mc-homeHero">
-                  <h2 className="mc-homeTitle">Ready to play?</h2>
+                  <h2 className="mc-homeTitle">Match the cards. Beat your best.</h2>
                   <p className="mc-homeLead">
-                    Flip two cards at a time. If they match, they stay revealed.
+                    Flip two cards at a time to find pairs. Finish in fewer moves and a faster time to set a new record.
                   </p>
 
                   <div className="mc-homePrimaryActions" aria-label="Start actions">
@@ -402,72 +410,18 @@ function App() {
                       type="button"
                       className="mc-btn mc-btn-primary mc-btn-large"
                       onClick={startGame}
-                      aria-label="Start game"
+                      aria-label="Start the Game"
                     >
-                      Play
-                    </button>
-
-                    <button
-                      type="button"
-                      className="mc-btn mc-btn-secondary"
-                      onClick={() => {
-                        // This is a placeholder; do not implement difficulty logic yet.
-                        setSrMessage(() => {
-                          srMsgSeqRef.current += 1;
-                          return "Difficulty selection is a placeholder and does not change gameplay yet.";
-                        });
-                      }}
-                      aria-label="About difficulty (placeholder)"
-                    >
-                      Difficulty: {difficulty}
+                      Start the Game
                     </button>
                   </div>
                 </div>
 
-                <div className="mc-homePanel" aria-label="Quick controls">
+                <div className="mc-homePanel" aria-label="Best score panel">
                   <div className="mc-homePanelHeader">
-                    <h3 className="mc-homePanelTitle">Quick settings</h3>
-                    <p className="mc-homePanelSubtitle">
-                      Difficulty is a placeholder (not applied to the game yet).
-                    </p>
+                    <h3 className="mc-homePanelTitle">Best score</h3>
+                    <p className="mc-homePanelSubtitle">Your fastest run (time) with moves as a tiebreaker.</p>
                   </div>
-
-                  <fieldset className="mc-homeFieldset" aria-label="Difficulty selection">
-                    <legend className="sr-only">Difficulty (placeholder)</legend>
-
-                    <label className="mc-radio">
-                      <input
-                        type="radio"
-                        name="difficulty"
-                        value="easy"
-                        checked={difficulty === "easy"}
-                        onChange={(e) => setDifficulty(e.target.value)}
-                      />
-                      <span className="mc-radioLabel">Easy</span>
-                    </label>
-
-                    <label className="mc-radio">
-                      <input
-                        type="radio"
-                        name="difficulty"
-                        value="normal"
-                        checked={difficulty === "normal"}
-                        onChange={(e) => setDifficulty(e.target.value)}
-                      />
-                      <span className="mc-radioLabel">Normal</span>
-                    </label>
-
-                    <label className="mc-radio">
-                      <input
-                        type="radio"
-                        name="difficulty"
-                        value="hard"
-                        checked={difficulty === "hard"}
-                        onChange={(e) => setDifficulty(e.target.value)}
-                      />
-                      <span className="mc-radioLabel">Hard</span>
-                    </label>
-                  </fieldset>
 
                   <div className="mc-homeMeta" aria-label="Stats preview">
                     <div className="mc-homeMetaItem">
@@ -475,6 +429,13 @@ function App() {
                       <span className="mc-homeMetaValue">
                         {bestScore ? `${formatTime(bestScore.time)} • ${bestScore.moves} moves` : "—"}
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="mc-homeMeta" aria-label="How to play">
+                    <div className="mc-homeMetaItem">
+                      <span className="mc-homeMetaLabel">How to play</span>
+                      <span className="mc-homeMetaValue">Flip • Remember • Match</span>
                     </div>
                   </div>
                 </div>
@@ -611,7 +572,12 @@ function App() {
                 </section>
               )}
 
-              <section className="mc-grid" aria-label={`${GRID_SIZE} by ${GRID_SIZE} card grid`}>
+              <section
+                ref={gameRegionRef}
+                className="mc-grid"
+                aria-label={`${GRID_SIZE} by ${GRID_SIZE} card grid`}
+                tabIndex={-1}
+              >
                 {deck.map((card, index) => (
                   <MemoryCard
                     key={card.id}
