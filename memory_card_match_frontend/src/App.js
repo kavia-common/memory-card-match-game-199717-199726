@@ -9,6 +9,7 @@ const FLIP_BACK_DELAY_MS = 800;
 
 const THEME_STORAGE_KEY = "mc-theme"; // "light" | "dark"
 const MUTE_STORAGE_KEY = "mc-muted"; // "true" | "false"
+const BEST_SCORE_STORAGE_KEY = "mc-best-score"; // JSON: { time, moves }
 
 // PUBLIC_INTERFACE
 function App() {
@@ -47,7 +48,33 @@ function App() {
   // Roving focus for keyboard arrow navigation across the grid.
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Timer state: elapsed time in seconds, whether timer is running, and start timestamp
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerStartRef = useRef(null);
+  const timerIntervalRef = useRef(null);
+
+  // Best score from localStorage
+  const [bestScore, setBestScore] = useState(() => {
+    const stored = window.localStorage.getItem(BEST_SCORE_STORAGE_KEY);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
   const matchedCount = useMemo(() => deck.filter((c) => c.isMatched).length, [deck]);
+
+  // Format time as MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   const totalCards = GRID_SIZE * GRID_SIZE;
   const allMatched = matchedCount === totalCards;
@@ -66,19 +93,63 @@ function App() {
     window.localStorage.setItem(MUTE_STORAGE_KEY, String(isMuted));
   }, [isMuted]);
 
+  // Timer interval: update elapsed time every second when running
   useEffect(() => {
-    // Handle game win state and sound
+    if (!timerRunning) {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      return;
+    }
+
+    timerIntervalRef.current = setInterval(() => {
+      if (timerStartRef.current) {
+        const now = Date.now();
+        const elapsed = Math.floor((now - timerStartRef.current) / 1000);
+        setElapsedTime(elapsed);
+      }
+    }, 1000);
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [timerRunning]);
+
+  useEffect(() => {
+    // Handle game win state, sound, and timer stop
     if (allMatched && status !== "won") {
       setStatus("won");
+      setTimerRunning(false);
       soundManager.play("win");
+
+      // Check and update best score
+      const currentScore = { time: elapsedTime, moves };
+      let isNewBest = false;
+
+      if (!bestScore) {
+        isNewBest = true;
+      } else {
+        // Best is determined by time first, then moves as tiebreaker
+        if (elapsedTime < bestScore.time || (elapsedTime === bestScore.time && moves < bestScore.moves)) {
+          isNewBest = true;
+        }
+      }
+
+      if (isNewBest) {
+        setBestScore(currentScore);
+        window.localStorage.setItem(BEST_SCORE_STORAGE_KEY, JSON.stringify(currentScore));
+      }
     }
-  }, [allMatched, status]);
+  }, [allMatched, status, elapsedTime, moves, bestScore]);
 
   useEffect(() => {
     if (status === "won") {
-      setSrMessage(`You win! You matched all pairs in ${moves} moves.`);
+      setSrMessage(`You win! You matched all pairs in ${moves} moves and ${formatTime(elapsedTime)}.`);
     }
-  }, [moves, status]);
+  }, [moves, status, elapsedTime]);
 
   useEffect(() => {
     // When two cards are flipped, resolve match/non-match after a short delay.
@@ -137,6 +208,13 @@ function App() {
     setMoves(0);
     setStatus("playing");
     setActiveIndex(0);
+    setElapsedTime(0);
+    setTimerRunning(false);
+    timerStartRef.current = null;
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
     setSrMessage(() => {
       srMsgSeqRef.current += 1;
       return "Game reset.";
@@ -150,6 +228,13 @@ function App() {
   const handleCardAction = (cardId) => {
     if (!canInteract) return;
     if (flippedIds.includes(cardId)) return;
+
+    // Start timer on first flip
+    if (!timerRunning && flippedIds.length === 0 && moves === 0) {
+      timerStartRef.current = Date.now();
+      setTimerRunning(true);
+      setElapsedTime(0);
+    }
 
     // Trigger sound on flip
     soundManager.play("flip");
@@ -218,6 +303,10 @@ function App() {
 
             <div className="mc-stats" aria-label="Game stats">
               <div className="mc-stat">
+                <span className="mc-statLabel">Time</span>
+                <span className="mc-statValue">{formatTime(elapsedTime)}</span>
+              </div>
+              <div className="mc-stat">
                 <span className="mc-statLabel">Moves</span>
                 <span className="mc-statValue">{moves}</span>
               </div>
@@ -254,7 +343,17 @@ function App() {
           {status === "won" ? (
             <div className="mc-banner mc-banner-success" role="status" aria-live="polite">
               <div className="mc-bannerText">
-                <strong>You win!</strong> You matched all pairs in <strong>{moves}</strong> moves.
+                <strong>You win!</strong> You matched all pairs in <strong>{moves}</strong> moves and <strong>{formatTime(elapsedTime)}</strong>.
+                {bestScore && (
+                  <>
+                    {" "}
+                    {elapsedTime < bestScore.time || (elapsedTime === bestScore.time && moves < bestScore.moves) ? (
+                      <span>🎉 New best score!</span>
+                    ) : (
+                      <span>Best: {formatTime(bestScore.time)} / {bestScore.moves} moves</span>
+                    )}
+                  </>
+                )}
               </div>
               <button
                 type="button"

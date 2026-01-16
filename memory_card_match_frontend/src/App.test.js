@@ -19,3 +19,9 @@ test("renders face-down cards with accessible names", () => {
   const faceDown = screen.getAllByRole("button", { name: /card face down, card \d+ of \d+/i });
   expect(faceDown.length).toBeGreaterThan(0);
 });
+
+test("renders timer stat element", () => {
+  render(<App />);
+  const timeLabel = screen.getByText(/time/i);
+  expect(timeLabel).toBeInTheDocument();
+});
