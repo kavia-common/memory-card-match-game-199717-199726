@@ -11,9 +11,27 @@ const THEME_STORAGE_KEY = "mc-theme"; // "light" | "dark"
 const MUTE_STORAGE_KEY = "mc-muted"; // "true" | "false"
 const BEST_SCORE_STORAGE_KEY = "mc-best-score"; // JSON: { time, moves }
 
+/**
+ * Lightweight in-app screens to avoid introducing routing unless needed.
+ * - "home": pre-game landing page
+ * - "game": the existing game UI
+ */
+const SCREENS = {
+  home: "home",
+  game: "game",
+};
+
 // PUBLIC_INTERFACE
 function App() {
-  /** Main entry component for the Memory Card Match game. */
+  /** Main entry component for the Memory Card Match game app (Home + Game screens). */
+  const [screen, setScreen] = useState(SCREENS.home);
+
+  // Home UI state (placeholder only; not used by game yet)
+  const [difficulty, setDifficulty] = useState("normal"); // easy | normal | hard (placeholder)
+
+  // Focus management for accessibility
+  const playButtonRef = useRef(null);
+
   const [deck, setDeck] = useState(() =>
     createShuffledDeck({ pairCount: (GRID_SIZE * GRID_SIZE) / 2 })
   );
@@ -93,6 +111,13 @@ function App() {
     window.localStorage.setItem(MUTE_STORAGE_KEY, String(isMuted));
   }, [isMuted]);
 
+  // Focus Play button when arriving on home screen
+  useEffect(() => {
+    if (screen === SCREENS.home && playButtonRef.current) {
+      playButtonRef.current.focus();
+    }
+  }, [screen]);
+
   // Timer interval: update elapsed time every second when running
   useEffect(() => {
     if (!timerRunning) {
@@ -133,7 +158,10 @@ function App() {
         isNewBest = true;
       } else {
         // Best is determined by time first, then moves as tiebreaker
-        if (elapsedTime < bestScore.time || (elapsedTime === bestScore.time && moves < bestScore.moves)) {
+        if (
+          elapsedTime < bestScore.time ||
+          (elapsedTime === bestScore.time && moves < bestScore.moves)
+        ) {
           isNewBest = true;
         }
       }
@@ -147,7 +175,9 @@ function App() {
 
   useEffect(() => {
     if (status === "won") {
-      setSrMessage(`You win! You matched all pairs in ${moves} moves and ${formatTime(elapsedTime)}.`);
+      setSrMessage(
+        `You win! You matched all pairs in ${moves} moves and ${formatTime(elapsedTime)}.`
+      );
     }
   }, [moves, status, elapsedTime]);
 
@@ -170,7 +200,7 @@ function App() {
     lockRef.current = true;
 
     const isMatch = a.pairId === b.pairId;
-    
+
     // Play sound immediately upon reveal result
     soundManager.play(isMatch ? "match" : "mismatch");
 
@@ -189,7 +219,9 @@ function App() {
 
     const timer = window.setTimeout(() => {
       if (isMatch) {
-        setDeck((prev) => prev.map((c) => (c.pairId === a.pairId ? { ...c, isMatched: true } : c)));
+        setDeck((prev) =>
+          prev.map((c) => (c.pairId === a.pairId ? { ...c, isMatched: true } : c))
+        );
       }
       // For both match and non-match, clear selection (matched cards will remain visible via isMatched flag).
       setFlippedIds([]);
@@ -218,6 +250,32 @@ function App() {
     setSrMessage(() => {
       srMsgSeqRef.current += 1;
       return "Game reset.";
+    });
+  };
+
+  // PUBLIC_INTERFACE
+  const startGame = () => {
+    /** Starts a new game session and navigates from Home to Game. */
+    // Ensure any browser audio policies are satisfied by user gesture.
+    soundManager.init();
+    resetGame();
+    setScreen(SCREENS.game);
+
+    // Announce navigation for SR users.
+    setSrMessage(() => {
+      srMsgSeqRef.current += 1;
+      return "Game started. Flip two cards at a time to find matching pairs.";
+    });
+  };
+
+  // PUBLIC_INTERFACE
+  const goHome = () => {
+    /** Navigates back to the Home screen; stops timer and clears live announcements. */
+    setTimerRunning(false);
+    setScreen(SCREENS.home);
+    setSrMessage(() => {
+      srMsgSeqRef.current += 1;
+      return "Returned to home screen.";
     });
   };
 
@@ -286,162 +344,296 @@ function App() {
     setIsMuted((prev) => !prev);
   };
 
+  const SettingsControls = () => (
+    <div className="mc-actions" aria-label="Display settings">
+      <button
+        type="button"
+        className="mc-btn mc-btn-secondary"
+        onClick={toggleMute}
+        aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
+        aria-pressed={isMuted}
+      >
+        {isMuted ? "Unmute" : "Mute"}
+      </button>
+
+      <button
+        type="button"
+        className="mc-btn mc-btn-secondary"
+        onClick={toggleTheme}
+        aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {theme === "dark" ? "Light mode" : "Dark mode"}
+      </button>
+    </div>
+  );
+
   return (
     <div className={["App", theme === "dark" ? "theme-dark" : ""].join(" ")}>
       <main className="mc-page">
-        <section className="mc-surface" aria-label="Memory Card Match game">
-          {/* aria-live region for match/mismatch/win announcements */}
+        <section className="mc-surface" aria-label="Memory Card Match app">
+          {/* aria-live region for match/mismatch/win announcements + navigation announcements */}
           <div className="sr-only" aria-live="polite" aria-atomic="true">
             {srMessage}
           </div>
 
-          <header className="mc-header">
-            <div className="mc-titleBlock">
-              <h1 className="mc-title">Memory Card Match</h1>
-              <p className="mc-subtitle">Flip two cards at a time and find all matching pairs.</p>
-            </div>
+          {screen === SCREENS.home ? (
+            <>
+              <header className="mc-header">
+                <div className="mc-titleBlock">
+                  <h1 className="mc-title">Memory Card Match</h1>
+                  <p className="mc-subtitle">
+                    Find all pairs with the fewest moves and the fastest time.
+                  </p>
+                </div>
 
-            <dl className="mc-stats" aria-label="Game stats">
-              <div className="mc-stat">
-                <dt className="mc-statLabel">Time</dt>
-                <dd className="mc-statValue">{formatTime(elapsedTime)}</dd>
-              </div>
+                <SettingsControls />
+              </header>
 
-              <div className="mc-stat">
-                <dt className="mc-statLabel">Moves</dt>
-                <dd className="mc-statValue">{moves}</dd>
-              </div>
+              <section className="mc-home" aria-label="Home screen">
+                <div className="mc-homeHero">
+                  <h2 className="mc-homeTitle">Ready to play?</h2>
+                  <p className="mc-homeLead">
+                    Flip two cards at a time. If they match, they stay revealed.
+                  </p>
 
-              <div className="mc-stat">
-                <dt className="mc-statLabel">Matched</dt>
-                <dd className="mc-statValue">
-                  {matchedCount}/{totalCards}
-                </dd>
-              </div>
-            </dl>
+                  <div className="mc-homePrimaryActions" aria-label="Start actions">
+                    <button
+                      ref={playButtonRef}
+                      type="button"
+                      className="mc-btn mc-btn-primary mc-btn-large"
+                      onClick={startGame}
+                      aria-label="Start game"
+                    >
+                      Play
+                    </button>
 
-            <div className="mc-actions" aria-label="Display settings">
-              <button
-                type="button"
-                className="mc-btn mc-btn-secondary"
-                onClick={toggleMute}
-                aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
-                aria-pressed={isMuted}
-              >
-                {isMuted ? "Unmute" : "Mute"}
-              </button>
-
-              <button
-                type="button"
-                className="mc-btn mc-btn-secondary"
-                onClick={toggleTheme}
-                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {theme === "dark" ? "Light mode" : "Dark mode"}
-              </button>
-            </div>
-          </header>
-
-          {status === "won" ? (
-            <section
-              className="mc-banner mc-banner-success mc-banner-win"
-              role="status"
-              aria-live="polite"
-              aria-label="Win message"
-            >
-              <div className="mc-bannerWinContent">
-                <div className="mc-bannerWinTitleRow">
-                  <span className="mc-bannerIcon" aria-hidden="true">
-                    🏆
-                  </span>
-                  <div className="mc-bannerWinTitleBlock">
-                    <h2 className="mc-bannerTitle">You win!</h2>
-                    <p className="mc-bannerLead">
-                      Final score: <strong>{moves}</strong> moves in{" "}
-                      <strong>{formatTime(elapsedTime)}</strong>.
-                    </p>
+                    <button
+                      type="button"
+                      className="mc-btn mc-btn-secondary"
+                      onClick={() => {
+                        // This is a placeholder; do not implement difficulty logic yet.
+                        setSrMessage(() => {
+                          srMsgSeqRef.current += 1;
+                          return "Difficulty selection is a placeholder and does not change gameplay yet.";
+                        });
+                      }}
+                      aria-label="About difficulty (placeholder)"
+                    >
+                      Difficulty: {difficulty}
+                    </button>
                   </div>
                 </div>
 
-                <dl className="mc-bannerStats" aria-label="Final stats">
-                  <div className="mc-bannerStat">
-                    <dt className="mc-bannerStatLabel">Moves</dt>
-                    <dd className="mc-bannerStatValue">{moves}</dd>
+                <div className="mc-homePanel" aria-label="Quick controls">
+                  <div className="mc-homePanelHeader">
+                    <h3 className="mc-homePanelTitle">Quick settings</h3>
+                    <p className="mc-homePanelSubtitle">
+                      Difficulty is a placeholder (not applied to the game yet).
+                    </p>
                   </div>
-                  <div className="mc-bannerStat">
-                    <dt className="mc-bannerStatLabel">Time</dt>
-                    <dd className="mc-bannerStatValue">{formatTime(elapsedTime)}</dd>
+
+                  <fieldset className="mc-homeFieldset" aria-label="Difficulty selection">
+                    <legend className="sr-only">Difficulty (placeholder)</legend>
+
+                    <label className="mc-radio">
+                      <input
+                        type="radio"
+                        name="difficulty"
+                        value="easy"
+                        checked={difficulty === "easy"}
+                        onChange={(e) => setDifficulty(e.target.value)}
+                      />
+                      <span className="mc-radioLabel">Easy</span>
+                    </label>
+
+                    <label className="mc-radio">
+                      <input
+                        type="radio"
+                        name="difficulty"
+                        value="normal"
+                        checked={difficulty === "normal"}
+                        onChange={(e) => setDifficulty(e.target.value)}
+                      />
+                      <span className="mc-radioLabel">Normal</span>
+                    </label>
+
+                    <label className="mc-radio">
+                      <input
+                        type="radio"
+                        name="difficulty"
+                        value="hard"
+                        checked={difficulty === "hard"}
+                        onChange={(e) => setDifficulty(e.target.value)}
+                      />
+                      <span className="mc-radioLabel">Hard</span>
+                    </label>
+                  </fieldset>
+
+                  <div className="mc-homeMeta" aria-label="Stats preview">
+                    <div className="mc-homeMetaItem">
+                      <span className="mc-homeMetaLabel">Best</span>
+                      <span className="mc-homeMetaValue">
+                        {bestScore ? `${formatTime(bestScore.time)} • ${bestScore.moves} moves` : "—"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mc-bannerStat">
-                    <dt className="mc-bannerStatLabel">Matched</dt>
-                    <dd className="mc-bannerStatValue">
+                </div>
+              </section>
+
+              <footer className="mc-footer">
+                <span className="mc-footerHint">Tip: You can use keyboard arrows in the game grid.</span>
+              </footer>
+            </>
+          ) : (
+            <>
+              <header className="mc-header">
+                <div className="mc-titleBlock">
+                  <h1 className="mc-title">Memory Card Match</h1>
+                  <p className="mc-subtitle">Flip two cards at a time and find all matching pairs.</p>
+                </div>
+
+                <dl className="mc-stats" aria-label="Game stats">
+                  <div className="mc-stat">
+                    <dt className="mc-statLabel">Time</dt>
+                    <dd className="mc-statValue">{formatTime(elapsedTime)}</dd>
+                  </div>
+
+                  <div className="mc-stat">
+                    <dt className="mc-statLabel">Moves</dt>
+                    <dd className="mc-statValue">{moves}</dd>
+                  </div>
+
+                  <div className="mc-stat">
+                    <dt className="mc-statLabel">Matched</dt>
+                    <dd className="mc-statValue">
                       {matchedCount}/{totalCards}
                     </dd>
                   </div>
                 </dl>
 
-                <div className="mc-bannerBest" aria-label="Best score">
-                  {bestScore ? (
-                    <>
-                      <span className="mc-bannerBestLabel">Best</span>
-                      <span className="mc-bannerBestValue">
-                        {formatTime(bestScore.time)} • {bestScore.moves} moves
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="mc-bannerBestLabel">Best</span>
-                      <span className="mc-bannerBestValue">—</span>
-                    </>
-                  )}
+                <div className="mc-actions" aria-label="Top actions">
+                  <button
+                    type="button"
+                    className="mc-btn mc-btn-secondary"
+                    onClick={goHome}
+                    aria-label="Back to home"
+                  >
+                    Home
+                  </button>
+                  <SettingsControls />
                 </div>
-              </div>
+              </header>
 
-              <div className="mc-bannerActions" aria-label="Win actions">
-                <button
-                  type="button"
-                  className="mc-btn mc-btn-primary"
-                  onClick={resetGame}
-                  aria-label="Play again"
+              {status === "won" ? (
+                <section
+                  className="mc-banner mc-banner-success mc-banner-win"
+                  role="status"
+                  aria-live="polite"
+                  aria-label="Win message"
                 >
-                  Play again
-                </button>
-              </div>
-            </section>
-          ) : (
-            <section className="mc-banner mc-banner-neutral" role="status" aria-live="polite" aria-label="Game tip">
-              <div className="mc-bannerText">Tip: Try to remember positions—each move flips two cards.</div>
-              <button
-                type="button"
-                className="mc-btn mc-btn-secondary"
-                onClick={resetGame}
-                aria-label="Reset game"
-              >
-                Reset
-              </button>
-            </section>
+                  <div className="mc-bannerWinContent">
+                    <div className="mc-bannerWinTitleRow">
+                      <span className="mc-bannerIcon" aria-hidden="true">
+                        🏆
+                      </span>
+                      <div className="mc-bannerWinTitleBlock">
+                        <h2 className="mc-bannerTitle">You win!</h2>
+                        <p className="mc-bannerLead">
+                          Final score: <strong>{moves}</strong> moves in{" "}
+                          <strong>{formatTime(elapsedTime)}</strong>.
+                        </p>
+                      </div>
+                    </div>
+
+                    <dl className="mc-bannerStats" aria-label="Final stats">
+                      <div className="mc-bannerStat">
+                        <dt className="mc-bannerStatLabel">Moves</dt>
+                        <dd className="mc-bannerStatValue">{moves}</dd>
+                      </div>
+                      <div className="mc-bannerStat">
+                        <dt className="mc-bannerStatLabel">Time</dt>
+                        <dd className="mc-bannerStatValue">{formatTime(elapsedTime)}</dd>
+                      </div>
+                      <div className="mc-bannerStat">
+                        <dt className="mc-bannerStatLabel">Matched</dt>
+                        <dd className="mc-bannerStatValue">
+                          {matchedCount}/{totalCards}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className="mc-bannerBest" aria-label="Best score">
+                      {bestScore ? (
+                        <>
+                          <span className="mc-bannerBestLabel">Best</span>
+                          <span className="mc-bannerBestValue">
+                            {formatTime(bestScore.time)} • {bestScore.moves} moves
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="mc-bannerBestLabel">Best</span>
+                          <span className="mc-bannerBestValue">—</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mc-bannerActions" aria-label="Win actions">
+                    <button
+                      type="button"
+                      className="mc-btn mc-btn-primary"
+                      onClick={resetGame}
+                      aria-label="Play again"
+                    >
+                      Play again
+                    </button>
+                  </div>
+                </section>
+              ) : (
+                <section
+                  className="mc-banner mc-banner-neutral"
+                  role="status"
+                  aria-live="polite"
+                  aria-label="Game tip"
+                >
+                  <div className="mc-bannerText">
+                    Tip: Try to remember positions—each move flips two cards.
+                  </div>
+                  <button
+                    type="button"
+                    className="mc-btn mc-btn-secondary"
+                    onClick={resetGame}
+                    aria-label="Reset game"
+                  >
+                    Reset
+                  </button>
+                </section>
+              )}
+
+              <section className="mc-grid" aria-label={`${GRID_SIZE} by ${GRID_SIZE} card grid`}>
+                {deck.map((card, index) => (
+                  <MemoryCard
+                    key={card.id}
+                    card={card}
+                    index={index}
+                    totalCards={deck.length}
+                    isFlipped={isCardFlipped(card)}
+                    isMatched={card.isMatched}
+                    disabled={!canInteract}
+                    onAction={() => handleCardAction(card.id)}
+                    onNavigate={(key) => handleCardNavigate(index, key)}
+                    isActive={index === activeIndex}
+                    setActive={() => setActiveIndex(index)}
+                  />
+                ))}
+              </section>
+
+              <footer className="mc-footer">
+                <span className="mc-footerHint">Responsive layout: try resizing the window.</span>
+              </footer>
+            </>
           )}
-
-          <section className="mc-grid" aria-label={`${GRID_SIZE} by ${GRID_SIZE} card grid`}>
-            {deck.map((card, index) => (
-              <MemoryCard
-                key={card.id}
-                card={card}
-                index={index}
-                totalCards={deck.length}
-                isFlipped={isCardFlipped(card)}
-                isMatched={card.isMatched}
-                disabled={!canInteract}
-                onAction={() => handleCardAction(card.id)}
-                onNavigate={(key) => handleCardNavigate(index, key)}
-                isActive={index === activeIndex}
-                setActive={() => setActiveIndex(index)}
-              />
-            ))}\n          </section>
-
-          <footer className="mc-footer">
-            <span className="mc-footerHint">Responsive layout: try resizing the window.</span>
-          </footer>
         </section>
       </main>
     </div>
