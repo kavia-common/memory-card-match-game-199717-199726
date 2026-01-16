@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import MemoryCard from "./components/MemoryCard";
 import { createShuffledDeck } from "./utils/gameUtils";
+import { soundManager } from "./utils/soundManager";
 
 const GRID_SIZE = 4; // 4x4 grid => 16 cards => 8 pairs
 const FLIP_BACK_DELAY_MS = 800;
 
 const THEME_STORAGE_KEY = "mc-theme"; // "light" | "dark"
+const MUTE_STORAGE_KEY = "mc-muted"; // "true" | "false"
 
 // PUBLIC_INTERFACE
 function App() {
@@ -36,6 +38,12 @@ function App() {
     return prefersDark ? "dark" : "light";
   });
 
+  // Sound preference: default to sound on (false), use localStorage if present.
+  const [isMuted, setIsMuted] = useState(() => {
+    const stored = window.localStorage.getItem(MUTE_STORAGE_KEY);
+    return stored === "true";
+  });
+
   // Roving focus for keyboard arrow navigation across the grid.
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -47,13 +55,24 @@ function App() {
   const columns = GRID_SIZE;
   const rows = Math.ceil(deck.length / columns);
 
+  // Sync theme to local storage
   useEffect(() => {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
+  // Sync mute state to local storage and sound manager
   useEffect(() => {
-    if (allMatched) setStatus("won");
-  }, [allMatched]);
+    soundManager.setMuted(isMuted);
+    window.localStorage.setItem(MUTE_STORAGE_KEY, String(isMuted));
+  }, [isMuted]);
+
+  useEffect(() => {
+    // Handle game win state and sound
+    if (allMatched && status !== "won") {
+      setStatus("won");
+      soundManager.play("win");
+    }
+  }, [allMatched, status]);
 
   useEffect(() => {
     if (status === "won") {
@@ -80,6 +99,9 @@ function App() {
     lockRef.current = true;
 
     const isMatch = a.pairId === b.pairId;
+    
+    // Play sound immediately upon reveal result
+    soundManager.play(isMatch ? "match" : "mismatch");
 
     // Announce outcome without leaking unrevealed identities. Only reveal the label when cards are currently revealed.
     if (isMatch) {
@@ -129,6 +151,9 @@ function App() {
     if (!canInteract) return;
     if (flippedIds.includes(cardId)) return;
 
+    // Trigger sound on flip
+    soundManager.play("flip");
+
     setFlippedIds((prev) => {
       if (prev.length >= 2) return prev;
       return [...prev, cardId];
@@ -172,6 +197,10 @@ function App() {
     setTheme((t) => (t === "dark" ? "light" : "dark"));
   };
 
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev);
+  };
+
   return (
     <div className={["App", theme === "dark" ? "theme-dark" : ""].join(" ")}>
       <main className="mc-page">
@@ -201,6 +230,16 @@ function App() {
             </div>
 
             <div className="mc-actions" aria-label="Display settings">
+              <button
+                type="button"
+                className="mc-btn mc-btn-secondary"
+                onClick={toggleMute}
+                aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
+                aria-pressed={isMuted}
+              >
+                {isMuted ? "Unmute" : "Mute"}
+              </button>
+              
               <button
                 type="button"
                 className="mc-btn mc-btn-secondary"
@@ -255,8 +294,7 @@ function App() {
                 isActive={index === activeIndex}
                 setActive={() => setActiveIndex(index)}
               />
-            ))}
-          </section>
+            ))}\n          </section>
 
           <footer className="mc-footer">
             <span className="mc-footerHint">Responsive layout: try resizing the window.</span>

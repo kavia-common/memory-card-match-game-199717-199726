@@ -126,6 +126,12 @@
   padding: 18px;
 }
 
+.mc-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .mc-header {
   display: flex;
   align-items: flex-start;
