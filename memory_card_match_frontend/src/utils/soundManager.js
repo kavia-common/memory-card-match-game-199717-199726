@@ -67,7 +67,7 @@ const synth = {
   },
   
   mismatch: (ctx) => {
-    // Low, slightly dissonant "buzzer"
+    // Distinct mismatch: descending tone (350Hz -> 100Hz), sharper attack
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     
@@ -75,11 +75,13 @@ const synth = {
     gain.connect(ctx.destination);
     
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(150, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.2);
+    
+    // Start higher and drop quickly to contrast with ascending flip
+    osc.frequency.setValueAtTime(350, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
     
     gain.gain.setValueAtTime(VOLUMES.mismatch, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
     
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.25);
