@@ -1,11 +1,21 @@
-/* Light theme style guide (requested)
-   primary:   #3b82f6
-   secondary: #64748b
-   success:   #06b6d4
-   error:     #EF4444
-   background:#f9fafb
-   surface:   #ffffff
-   text:      #111827
+/* Theme tokens
+   Light theme style guide (requested):
+     primary:   #3b82f6
+     secondary: #64748b
+     success:   #06b6d4
+     error:     #EF4444
+     background:#f9fafb
+     surface:   #ffffff
+     text:      #111827
+
+   Dark theme palette (requested):
+     background: #0b1220
+     surface:    #111827
+     text:       #e5e7eb
+     primary:    #3b82f6
+     secondary:  #94a3b8
+     success:    #06b6d4
+     error:      #EF4444
 */
 
 :root {
@@ -24,15 +34,80 @@
   --mc-radius: 16px;
   --mc-card-radius: 14px;
 
+  /* Used for :focus-visible box-shadow on interactive elements */
   --mc-focus: 0 0 0 4px rgba(59, 130, 246, 0.25);
+}
+
+/* Applied to the top-level App node to switch variables */
+.theme-dark {
+  --mc-primary: #3b82f6;
+  --mc-secondary: #94a3b8;
+  --mc-success: #06b6d4;
+  --mc-error: #ef4444;
+
+  --mc-bg: #0b1220;
+  --mc-surface: #111827;
+  --mc-text: #e5e7eb;
+
+  --mc-border: rgba(229, 231, 235, 0.12);
+  --mc-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+
+  /* Stronger focus ring for dark backgrounds */
+  --mc-focus: 0 0 0 4px rgba(59, 130, 246, 0.45);
+}
+
+/* Screen reader only utility (kept in DOM for aria-live) */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .mc-card-inner {
+    transition: none !important;
+  }
+  .mc-btn {
+    transition: none !important;
+  }
 }
 
 .App {
   min-height: 100vh;
-  background: radial-gradient(900px 400px at 20% 0%, rgba(59, 130, 246, 0.10), transparent 60%),
-    radial-gradient(900px 400px at 80% 0%, rgba(6, 182, 212, 0.12), transparent 60%),
+  background: radial-gradient(
+      900px 400px at 20% 0%,
+      rgba(59, 130, 246, 0.10),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 400px at 80% 0%,
+      rgba(6, 182, 212, 0.12),
+      transparent 60%
+    ),
     var(--mc-bg);
   color: var(--mc-text);
+}
+
+/* Dark mode: adjust decorative gradients to avoid washing out */
+.theme-dark.App {
+  background: radial-gradient(
+      900px 400px at 20% 0%,
+      rgba(59, 130, 246, 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 400px at 80% 0%,
+      rgba(6, 182, 212, 0.14),
+      transparent 60%
+    ),
+    var(--mc-bg);
 }
 
 .mc-page {
@@ -166,13 +241,18 @@
 }
 
 .mc-btn-secondary {
-  background: #ffffff;
+  background: var(--mc-surface);
   border-color: rgba(100, 116, 139, 0.30);
   color: var(--mc-secondary);
 }
 
 .mc-btn-secondary:hover {
-  background: rgba(100, 116, 139, 0.06);
+  background: rgba(100, 116, 139, 0.08);
+}
+
+/* Slightly stronger border on dark surface */
+.theme-dark .mc-btn-secondary {
+  border-color: rgba(148, 163, 184, 0.28);
 }
 
 .mc-grid {
@@ -246,6 +326,11 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.85);
   box-shadow: 0 6px 18px rgba(17, 24, 39, 0.10);
+}
+
+.theme-dark .mc-card-back-dot {
+  background: rgba(229, 231, 235, 0.82);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
 .mc-card-back {
