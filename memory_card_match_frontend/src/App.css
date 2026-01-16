@@ -69,6 +69,12 @@
   border: 0 !important;
 }
 
+/* Motion tokens + small UI animations (no external deps) */
+:root {
+  --mc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --mc-win-ring: rgba(6, 182, 212, 0.28);
+}
+
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .mc-card-inner {
@@ -76,6 +82,9 @@
   }
   .mc-btn {
     transition: none !important;
+  }
+  .mc-banner-win {
+    animation: none !important;
   }
 }
 
@@ -165,6 +174,8 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
 }
 
 .mc-stat {
@@ -176,17 +187,19 @@
 }
 
 .mc-statLabel {
-  display: block;
+  margin: 0;
   font-size: 12px;
+  font-weight: 600;
   color: var(--mc-secondary);
+  letter-spacing: 0.01em;
 }
 
 .mc-statValue {
-  display: block;
+  margin: 2px 0 0 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.01em;
-  margin-top: 2px;
+  color: var(--mc-text);
 }
 
 .mc-banner {
@@ -214,6 +227,167 @@
 .mc-banner-success {
   border-color: rgba(6, 182, 212, 0.35);
   background: linear-gradient(to right, rgba(6, 182, 212, 0.14), rgba(59, 130, 246, 0.10));
+}
+
+/* Win banner polish */
+@keyframes mcWinPop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mc-banner-win {
+  position: relative;
+  overflow: hidden;
+  animation: mcWinPop 240ms var(--mc-ease-out) both;
+  box-shadow: 0 10px 26px rgba(6, 182, 212, 0.10);
+}
+
+.theme-dark .mc-banner-win {
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+}
+
+/* Decorative celebratory glow (theme-safe) */
+.mc-banner-win::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background:
+    radial-gradient(520px 180px at 10% 0%, rgba(6, 182, 212, 0.20), transparent 60%),
+    radial-gradient(520px 180px at 90% 0%, rgba(59, 130, 246, 0.16), transparent 60%);
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.mc-bannerWinContent,
+.mc-bannerActions {
+  position: relative;
+  z-index: 1;
+}
+
+.mc-bannerWinContent {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mc-bannerWinTitleRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.mc-bannerIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  box-shadow: inset 0 0 0 2px rgba(6, 182, 212, 0.10);
+  font-size: 18px;
+}
+
+.theme-dark .mc-bannerIcon {
+  background: rgba(17, 24, 39, 0.70);
+  border-color: rgba(6, 182, 212, 0.22);
+}
+
+.mc-bannerWinTitleBlock {
+  min-width: 0;
+}
+
+.mc-bannerTitle {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.mc-bannerLead {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: var(--mc-text);
+  line-height: 1.4;
+}
+
+.mc-bannerStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.mc-bannerStat {
+  border: 1px solid var(--mc-border);
+  border-radius: 12px;
+  padding: 10px 10px;
+  background: rgba(255, 255, 255, 0.40);
+}
+
+.theme-dark .mc-bannerStat {
+  background: rgba(17, 24, 39, 0.40);
+}
+
+.mc-bannerStatLabel {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mc-secondary);
+}
+
+.mc-bannerStatValue {
+  margin: 2px 0 0 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--mc-text);
+}
+
+.mc-bannerBest {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px dashed rgba(6, 182, 212, 0.35);
+  background: linear-gradient(to right, rgba(6, 182, 212, 0.10), rgba(59, 130, 246, 0.06));
+}
+
+.theme-dark .mc-bannerBest {
+  border-color: rgba(6, 182, 212, 0.30);
+}
+
+.mc-bannerBestLabel {
+  color: var(--mc-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.mc-bannerBestValue {
+  color: var(--mc-text);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-align: right;
+}
+
+.mc-bannerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .mc-btn {
@@ -374,6 +548,14 @@
   .mc-banner {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .mc-bannerActions {
+    width: 100%;
+  }
+
+  .mc-bannerStats {
+    grid-template-columns: 1fr;
   }
 
   .mc-btn {

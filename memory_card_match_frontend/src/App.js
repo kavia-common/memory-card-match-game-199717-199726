@@ -301,22 +301,24 @@ function App() {
               <p className="mc-subtitle">Flip two cards at a time and find all matching pairs.</p>
             </div>
 
-            <div className="mc-stats" aria-label="Game stats">
+            <dl className="mc-stats" aria-label="Game stats">
               <div className="mc-stat">
-                <span className="mc-statLabel">Time</span>
-                <span className="mc-statValue">{formatTime(elapsedTime)}</span>
+                <dt className="mc-statLabel">Time</dt>
+                <dd className="mc-statValue">{formatTime(elapsedTime)}</dd>
               </div>
+
               <div className="mc-stat">
-                <span className="mc-statLabel">Moves</span>
-                <span className="mc-statValue">{moves}</span>
+                <dt className="mc-statLabel">Moves</dt>
+                <dd className="mc-statValue">{moves}</dd>
               </div>
+
               <div className="mc-stat">
-                <span className="mc-statLabel">Matched</span>
-                <span className="mc-statValue">
+                <dt className="mc-statLabel">Matched</dt>
+                <dd className="mc-statValue">
                   {matchedCount}/{totalCards}
-                </span>
+                </dd>
               </div>
-            </div>
+            </dl>
 
             <div className="mc-actions" aria-label="Display settings">
               <button
@@ -328,7 +330,7 @@ function App() {
               >
                 {isMuted ? "Unmute" : "Mute"}
               </button>
-              
+
               <button
                 type="button"
                 className="mc-btn mc-btn-secondary"
@@ -341,31 +343,73 @@ function App() {
           </header>
 
           {status === "won" ? (
-            <div className="mc-banner mc-banner-success" role="status" aria-live="polite">
-              <div className="mc-bannerText">
-                <strong>You win!</strong> You matched all pairs in <strong>{moves}</strong> moves and <strong>{formatTime(elapsedTime)}</strong>.
-                {bestScore && (
-                  <>
-                    {" "}
-                    {elapsedTime < bestScore.time || (elapsedTime === bestScore.time && moves < bestScore.moves) ? (
-                      <span>🎉 New best score!</span>
-                    ) : (
-                      <span>Best: {formatTime(bestScore.time)} / {bestScore.moves} moves</span>
-                    )}
-                  </>
-                )}
+            <section
+              className="mc-banner mc-banner-success mc-banner-win"
+              role="status"
+              aria-live="polite"
+              aria-label="Win message"
+            >
+              <div className="mc-bannerWinContent">
+                <div className="mc-bannerWinTitleRow">
+                  <span className="mc-bannerIcon" aria-hidden="true">
+                    🏆
+                  </span>
+                  <div className="mc-bannerWinTitleBlock">
+                    <h2 className="mc-bannerTitle">You win!</h2>
+                    <p className="mc-bannerLead">
+                      Final score: <strong>{moves}</strong> moves in{" "}
+                      <strong>{formatTime(elapsedTime)}</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <dl className="mc-bannerStats" aria-label="Final stats">
+                  <div className="mc-bannerStat">
+                    <dt className="mc-bannerStatLabel">Moves</dt>
+                    <dd className="mc-bannerStatValue">{moves}</dd>
+                  </div>
+                  <div className="mc-bannerStat">
+                    <dt className="mc-bannerStatLabel">Time</dt>
+                    <dd className="mc-bannerStatValue">{formatTime(elapsedTime)}</dd>
+                  </div>
+                  <div className="mc-bannerStat">
+                    <dt className="mc-bannerStatLabel">Matched</dt>
+                    <dd className="mc-bannerStatValue">
+                      {matchedCount}/{totalCards}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mc-bannerBest" aria-label="Best score">
+                  {bestScore ? (
+                    <>
+                      <span className="mc-bannerBestLabel">Best</span>
+                      <span className="mc-bannerBestValue">
+                        {formatTime(bestScore.time)} • {bestScore.moves} moves
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="mc-bannerBestLabel">Best</span>
+                      <span className="mc-bannerBestValue">—</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <button
-                type="button"
-                className="mc-btn mc-btn-primary"
-                onClick={resetGame}
-                aria-label="Play again"
-              >
-                Play again
-              </button>
-            </div>
+
+              <div className="mc-bannerActions" aria-label="Win actions">
+                <button
+                  type="button"
+                  className="mc-btn mc-btn-primary"
+                  onClick={resetGame}
+                  aria-label="Play again"
+                >
+                  Play again
+                </button>
+              </div>
+            </section>
           ) : (
-            <div className="mc-banner mc-banner-neutral" role="status" aria-live="polite">
+            <section className="mc-banner mc-banner-neutral" role="status" aria-live="polite" aria-label="Game tip">
               <div className="mc-bannerText">Tip: Try to remember positions—each move flips two cards.</div>
               <button
                 type="button"
@@ -375,7 +419,7 @@ function App() {
               >
                 Reset
               </button>
-            </div>
+            </section>
           )}
 
           <section className="mc-grid" aria-label={`${GRID_SIZE} by ${GRID_SIZE} card grid`}>

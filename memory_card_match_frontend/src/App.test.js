@@ -22,6 +22,7 @@ test("renders face-down cards with accessible names", () => {
 
 test("renders timer stat element", () => {
   render(<App />);
-  const timeLabel = screen.getByText(/time/i);
+  // Time appears as a stat label in the header; ensure it's present.
+  const timeLabel = screen.getByText(/^time$/i);
   expect(timeLabel).toBeInTheDocument();
 });
