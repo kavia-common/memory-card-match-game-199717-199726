@@ -67,24 +67,39 @@ const synth = {
   },
   
   mismatch: (ctx) => {
-    // Distinct mismatch: descending tone (350Hz -> 100Hz), sharper attack
+    // Distinct mismatch: descending buzzer.
+    //
+    // Bugfix note:
+    // Some devices (especially phones/laptops) attenuate low frequencies heavily.
+    // The previous 350Hz -> 100Hz sweep could be perceived as "silent". We move
+    // the sweep slightly higher and use a stronger envelope so it cuts through.
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    
-    osc.connect(gain);
+    const filter = ctx.createBiquadFilter();
+
+    // Gentle lowpass to avoid an overly harsh sawtooth while keeping loudness.
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1200, ctx.currentTime);
+    filter.Q.setValueAtTime(0.7, ctx.currentTime);
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
-    
-    osc.type = 'sawtooth';
-    
-    // Start higher and drop quickly to contrast with ascending flip
-    osc.frequency.setValueAtTime(350, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
-    
-    gain.gain.setValueAtTime(VOLUMES.mismatch, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-    
+
+    osc.type = "sawtooth";
+
+    // Sweep kept above very low-end where small speakers drop off.
+    osc.frequency.setValueAtTime(420, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + 0.24);
+
+    // Stronger attack + slightly longer release for audibility.
+    const peak = Math.min(0.35, VOLUMES.mismatch * 1.7);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(peak, ctx.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.25);
+    osc.stop(ctx.currentTime + 0.32);
   },
   
   win: (ctx) => {
